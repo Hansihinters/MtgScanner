@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MTG Kortprisscanner</title>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --surface: #1a1a24;
+    --surface2: #22222f;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --text: #f0f0f4;
+    --text2: #9090a8;
+    --text3: #5a5a72;
+    --accent: #7c6af7;
+    --accent2: #5b52c4;
+    --success: #3ecf7c;
+    --warn: #f0a429;
+    --danger: #f04f4f;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 1.5rem 1rem 3rem;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 0.5px solid var(--border);
+  }
+
+  .logo {
+    width: 40px; height: 40px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+
+  h1 { font-size: 18px; font-weight: 600; }
+  .subtitle { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+  .section { margin-bottom: 1.25rem; }
+
+  label.field-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+
+  input[type="password"], input[type="text"] {
+    width: 100%;
+    background: var(--surface);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 14px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border 0.15s;
+  }
+  input:focus { border-color: var(--accent); }
+
+  .drop-zone {
+    background: var(--surface);
+    border: 1.5px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 2.5rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.active { border-color: var(--accent); background: var(--surface2); }
+  .drop-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+  .drop-icon { font-size: 36px; margin-bottom: 10px; }
+  .drop-text { font-size: 15px; color: var(--text2); }
+  .drop-sub { font-size: 13px; color: var(--text3); margin-top: 4px; }
+
+  .preview-wrap {
+    display: none;
+    align-items: flex-start;
+    gap: 12px;
+    background: var(--surface);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 12px;
+  }
+  .preview-wrap img {
+    width: 80px;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+  .preview-info { flex: 1; }
+  .preview-filename { font-size: 13px; font-weight: 500; word-break: break-all; }
+  .preview-size { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+  button.primary {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 13px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  button.primary:hover { background: var(--accent2); }
+  button.primary:active { transform: scale(0.98); }
+  button.primary:disabled { background: var(--surface2); color: var(--text3); cursor: not-allowed; transform: none; }
+
+  .steps { display: none; margin-bottom: 1.25rem; }
+  .step {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 10px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .step:last-child { border-bottom: none; }
+  .step-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--text3);
+    margin-top: 6px;
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .step-dot.active { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+  .step-dot.done { background: var(--success); }
+  .step-dot.error { background: var(--danger); }
+  .step-title { font-size: 14px; font-weight: 500; }
+  .step-detail { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+  .result-card {
+    display: none;
+    background: var(--surface);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .card-name { font-size: 20px; font-weight: 600; margin-bottom: 2px; }
+  .card-set { font-size: 14px; color: var(--text2); margin-bottom: 1rem; }
+
+  .price-section {
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    margin-bottom: 1rem;
+  }
+  .price-label { font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .price-value { font-size: 32px; font-weight: 700; color: var(--success); }
+  .price-from { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+  .meta-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-top: 0.5px solid var(--border);
+    font-size: 14px;
+  }
+  .meta-key { color: var(--text2); }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+  .badge-warn { background: rgba(240,164,41,0.15); color: var(--warn); }
+  .badge-ok { background: rgba(62,207,124,0.15); color: var(--success); }
+  .badge-err { background: rgba(240,79,79,0.15); color: var(--danger); }
+
+  .cm-link {
+    display: block;
+    width: 100%;
+    text-align: center;
+    background: var(--surface2);
+    color: var(--accent);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 11px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .cm-link:hover { background: rgba(124,106,247,0.12); }
+
+  .warn-box {
+    background: rgba(240,164,41,0.08);
+    border: 0.5px solid rgba(240,164,41,0.3);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--warn);
+    margin-bottom: 10px;
+  }
+
+  #log {
+    display: none;
+    font-size: 11px;
+    color: var(--text3);
+    font-family: monospace;
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    max-height: 100px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin-top: 8px;
+  }
+
+  .key-note {
+    font-size: 12px;
+    color: var(--text3);
+    margin-top: 5px;
+  }
+  .key-note a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🃏</div>
+  <div>
+    <h1>MTG Kortprisscanner</h1>
+    <div class="subtitle">Trend-pris fra Cardmarket</div>
+  </div>
+</header>
+
+
+<div class="section" id="apiKeySection">
+  <label class="field-label">Anthropic API-nøgle</label>
+  <div style="display:flex;gap:8px;">
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." style="flex:1;">
+    <button onclick="saveApiKey()" style="width:auto;padding:0 16px;white-space:nowrap;">Gem</button>
+  </div>
+  <p style="font-size:12px;color:var(--text3);margin-top:5px;">Gemmes lokalt i browseren — ligger ikke i koden</p>
+</div>
+
+<div id="apiKeySaved" style="display:none;margin-bottom:1.25rem;font-size:13px;color:var(--success);display:flex;align-items:center;gap:6px;">
+  <span>&#10003;</span> API-nøgle gemt i denne browser
+  <button onclick="document.getElementById('apiKeySection').style.display='block';document.getElementById('apiKeySaved').style.display='none';" style="width:auto;padding:2px 10px;font-size:12px;margin-left:8px;">Skift</button>
+</div>
+
+<div class="section">
+  <label class="field-label">Kortbillede</label>
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept="image/*" capture="environment">
+    <div class="drop-icon">📷</div>
+    <div class="drop-text">Tag billede eller upload</div>
+    <div class="drop-sub">Tryk her for at vælge fil</div>
+  </div>
+  <div class="preview-wrap" id="previewWrap">
+    <img id="previewImg" src="" alt="Kort">
+    <div class="preview-info">
+      <div class="preview-filename" id="previewName"></div>
+      <div class="preview-size" id="previewSize"></div>
+    </div>
+  </div>
+</div>
+
+
+
+<div class="steps" id="steps">
+  <div class="step">
+    <div class="step-dot" id="d1"></div>
+    <div>
+      <div class="step-title" id="t1">Genkender kort via Claude Vision...</div>
+      <div class="step-detail" id="det1"></div>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-dot" id="d2"></div>
+    <div>
+      <div class="step-title" id="t2">Henter pris fra Cardmarket...</div>
+      <div class="step-detail" id="det2"></div>
+    </div>
+  </div>
+</div>
+
+<div class="result-card" id="resultCard"></div>
+<div id="log"></div>
+
+<script>
+  let imageBase64 = null;
+  let imageMime = 'image/jpeg';
+
+  const fileInput = document.getElementById('fileInput');
+  const dropZone = document.getElementById('dropZone');
+  fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('active'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('active'));
+  dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('active'); handleFile(e.dataTransfer.files[0]); });
+
+  function handleFile(file) {
+    if (!file) return;
+    imageMime = file.type || 'image/jpeg';
+    const reader = new FileReader();
+    reader.onload = ev => {
+      imageBase64 = ev.target.result.split(',')[1];
+      document.getElementById('previewImg').src = ev.target.result;
+      document.getElementById('previewName').textContent = file.name;
+      document.getElementById('previewSize').textContent = (file.size / 1024).toFixed(0) + ' KB';
+      document.getElementById('previewWrap').style.display = 'flex';
+      dropZone.style.display = 'none';
+      startScan();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function log(msg) {
+    const el = document.getElementById('log');
+    el.style.display = 'block';
+    el.textContent += msg + '\n';
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function setStep(n, title, detail, state) {
+    document.getElementById('t' + n).textContent = title;
+    if (detail) document.getElementById('det' + n).textContent = detail;
+    const dot = document.getElementById('d' + n);
+    dot.className = 'step-dot ' + (state || '');
+  }
+
+  function getApiKey() {
+    return localStorage.getItem('anthropic_api_key') || '';
+  }
+
+  function saveApiKey() {
+    const key = document.getElementById('apiKeyInput').value.trim();
+    if (!key) return;
+    localStorage.setItem('anthropic_api_key', key);
+    document.getElementById('apiKeySection').style.display = 'none';
+    document.getElementById('apiKeySaved').style.display = 'block';
+  }
+
+  function checkApiKey() {
+    const key = getApiKey();
+    if (key) {
+      document.getElementById('apiKeySection').style.display = 'none';
+      document.getElementById('apiKeySaved').style.display = 'block';
+    }
+  }
+
+  async function startScan() {
+    if (!getApiKey()) {
+      alert('Indtast din Anthropic API-nøgle først.');
+      return;
+    }
+    if (!imageBase64) return;
+
+    document.getElementById('steps').style.display = 'block';
+    document.getElementById('resultCard').style.display = 'none';
+    document.getElementById('log').style.display = 'none';
+    document.getElementById('log').textContent = '';
+
+    setStep(1, 'Genkender kort via Claude Vision...', '', 'active');
+    setStep(2, 'Henter pris fra Scryfall...', '', '');
+
+    let card = null;
+    try {
+      card = await recognizeCard();
+      setStep(1, 'Kort genkendt', card.name + (card.set ? ' · ' + card.set : ''), 'done');
+      log('Genkendt: ' + JSON.stringify(card));
+    } catch(err) {
+      setStep(1, 'Genkendelse fejlede', err.message, 'error');
+      showError('Kunne ikke genkende kortet: ' + err.message);
+      return;
+    }
+
+    setStep(2, 'Henter pris fra Scryfall...', '', 'active');
+
+    let price = null;
+    try {
+      price = await fetchViaScryfall(card);
+      setStep(2, 'Pris hentet', 'Cardmarket-priser via Scryfall', 'done');
+    } catch(err) {
+      log('Scryfall fejl: ' + err.message);
+      setStep(2, 'Scryfall fejlede — viser link i stedet', err.message, 'error');
+    }
+
+    if (price) {
+      showResult(card, price);
+    } else {
+      showFallback(card);
+    }
+
+  }
+
+  async function recognizeCard() {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: imageMime, data: imageBase64 }},
+            { type: 'text', text: 'This is a Magic: The Gathering card. Identify it precisely. Return ONLY a JSON object with these exact fields: name (exact English card name), set (full set name in English), set_code (3-4 letter set code), collector_number (number on card if visible, else null), language ("English", "German", "French" etc), foil (true/false or null). No markdown, no explanation, just raw JSON.' }
+          ]
+        }]
+      })
+    });
+    if (!resp.ok) throw new Error('Claude API HTTP ' + resp.status);
+    const data = await resp.json();
+    const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    return JSON.parse(text.replace(/```json|```/g, '').trim());
+  }
+
+  async function fetchViaScryfall(card) {
+    let url;
+    if (card.set_code && card.collector_number) {
+      url = 'https://api.scryfall.com/cards/' + card.set_code.toLowerCase() + '/' + card.collector_number;
+      log('Scryfall URL (set+nr): ' + url);
+    } else {
+      url = 'https://api.scryfall.com/cards/named?exact=' + encodeURIComponent(card.name) + (card.set_code ? '&set=' + card.set_code.toLowerCase() : '');
+      log('Scryfall URL (name): ' + url);
+    }
+
+    let resp = await fetch(url);
+    if (!resp.ok) {
+      const fuzzyUrl = 'https://api.scryfall.com/cards/named?fuzzy=' + encodeURIComponent(card.name) + (card.set_code ? '&set=' + card.set_code.toLowerCase() : '');
+      log('Prover fuzzy: ' + fuzzyUrl);
+      resp = await fetch(fuzzyUrl);
+      if (!resp.ok) throw new Error('Kort ikke fundet pa Scryfall (HTTP ' + resp.status + ')');
+    }
+
+    const data = await resp.json();
+    log('Scryfall priser: ' + JSON.stringify(data.prices));
+
+    const p = data.prices || {};
+    const eur = p.eur ? parseFloat(p.eur) : null;
+    const eurFoil = p.eur_foil ? parseFloat(p.eur_foil) : null;
+    const usd = p.usd ? parseFloat(p.usd) : null;
+
+    if (!eur && !eurFoil && !usd) throw new Error('Ingen prisdata fra Scryfall');
+
+    return {
+      trend: eur ? eur.toFixed(2) + ' EUR' : null,
+      foilPrice: eurFoil ? eurFoil.toFixed(2) + ' EUR' : null,
+      usd: usd ? usd.toFixed(2) + ' USD' : null,
+      scryfallUri: data.scryfall_uri || null,
+      cardmarketUri: data.purchase_uris ? data.purchase_uris.cardmarket : null,
+      scryfallName: data.name,
+      scryfallSet: data.set_name
+    };
+  }
+
+  function buildCardmarketUrl(card) {
+    const name = card.name.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+    if (card.set) {
+      const set = card.set.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '');
+      return 'https://www.cardmarket.com/en/Magic/Products/Singles/' + set + '/' + name;
+    }
+    return 'https://www.cardmarket.com/en/Magic/Products/Search?searchString=' + encodeURIComponent(card.name);
+  }
+
+  function showResult(card, price) {
+    const rc = document.getElementById('resultCard');
+    rc.style.display = 'block';
+    const cmUrl = price.cardmarketUri || buildCardmarketUrl(card);
+    rc.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px;">' +
+        '<div class="card-name">' + esc(price.scryfallName || card.name) + '</div>' +
+        '<span class="badge badge-ok">Pris fundet</span>' +
+      '</div>' +
+      '<div class="card-set">' + esc(price.scryfallSet || card.set || '') + (card.set_code ? ' (' + card.set_code.toUpperCase() + ')' : '') + '</div>' +
+      '<div class="price-section">' +
+        '<div class="price-label">Cardmarket trend-pris</div>' +
+        '<div class="price-value">' + (price.trend || '–') + '</div>' +
+        (price.foilPrice ? '<div class="price-from">Foil: ' + price.foilPrice + '</div>' : '') +
+        (!price.trend && price.usd ? '<div class="price-from">USD: ' + price.usd + '</div>' : '') +
+      '</div>' +
+      (card.language ? '<div class="meta-row"><span class="meta-key">Sprog</span><span>' + esc(card.language) + '</span></div>' : '') +
+      (card.collector_number ? '<div class="meta-row"><span class="meta-key">Samlernummer</span><span>' + esc(String(card.collector_number)) + '</span></div>' : '') +
+      (card.foil != null ? '<div class="meta-row"><span class="meta-key">Foil</span><span>' + (card.foil ? 'Ja' : 'Nej') + '</span></div>' : '') +
+      '<div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">' +
+        '<button class="primary" onclick="resetScan()" style="margin-bottom:8px;">Scan nyt kort</button>' +
+        '<a class="cm-link" href="' + cmUrl + '" target="_blank">Se pa Cardmarket →</a>' +
+        (price.scryfallUri ? '<a class="cm-link" href="' + price.scryfallUri + '" target="_blank" style="color:var(--text2);">Se pa Scryfall →</a>' : '') +
+      '</div>';
+  }
+
+  function showFallback(card) {
+    const rc = document.getElementById('resultCard');
+    rc.style.display = 'block';
+    rc.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px;">' +
+        '<div class="card-name">' + esc(card.name) + '</div>' +
+        '<span class="badge badge-warn">Pris ikke fundet</span>' +
+      '</div>' +
+      '<div class="card-set">' + esc(card.set || '') + (card.set_code ? ' (' + card.set_code.toUpperCase() + ')' : '') + '</div>' +
+      '<div class="warn-box">Kunne ikke hente prisen automatisk. Abn kortet manuelt pa Cardmarket.</div>' +
+      (card.language ? '<div class="meta-row"><span class="meta-key">Sprog</span><span>' + esc(card.language) + '</span></div>' : '') +
+      (card.foil != null ? '<div class="meta-row"><span class="meta-key">Foil</span><span>' + (card.foil ? 'Ja' : 'Nej') + '</span></div>' : '') +
+      '<div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">' +
+        '<button class="primary" onclick="resetScan()" style="margin-bottom:8px;">Scan nyt kort</button>' +
+        '<a class="cm-link" href="' + buildCardmarketUrl(card) + '" target="_blank">Abn "' + esc(card.name) + '" pa Cardmarket →</a>' +
+      '</div>';
+  }
+
+  function showError(msg) {
+    const rc = document.getElementById('resultCard');
+    rc.style.display = 'block';
+    rc.innerHTML = '<span class="badge badge-err">Fejl</span><p style="font-size:14px;color:var(--danger);margin-top:8px;">' + esc(msg) + '</p>';
+  }
+
+  checkApiKey();
+
+  function resetScan() {
+    imageBase64 = null;
+    document.getElementById('previewWrap').style.display = 'none';
+    document.getElementById('dropZone').style.display = 'block';
+    document.getElementById('steps').style.display = 'none';
+    document.getElementById('resultCard').style.display = 'none';
+    document.getElementById('log').style.display = 'none';
+    document.getElementById('log').textContent = '';
+    document.getElementById('fileInput').value = '';
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>
