@@ -257,6 +257,20 @@
 </header>
 
 
+<div class="section" id="apiKeySection">
+  <label class="field-label">Anthropic API-nøgle</label>
+  <div style="display:flex;gap:8px;">
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-api03-..." style="flex:1;">
+    <button onclick="saveApiKey()" style="width:auto;padding:0 16px;white-space:nowrap;">Gem</button>
+  </div>
+  <p style="font-size:12px;color:var(--text3);margin-top:5px;">Gemmes lokalt i browseren — ligger ikke i koden</p>
+</div>
+
+<div id="apiKeySaved" style="display:none;margin-bottom:1.25rem;font-size:13px;color:var(--success);display:flex;align-items:center;gap:6px;">
+  <span>&#10003;</span> API-nøgle gemt i denne browser
+  <button onclick="document.getElementById('apiKeySection').style.display='block';document.getElementById('apiKeySaved').style.display='none';" style="width:auto;padding:2px 10px;font-size:12px;margin-left:8px;">Skift</button>
+</div>
+
 <div class="section">
   <label class="field-label">Kortbillede</label>
   <div class="drop-zone" id="dropZone">
@@ -346,7 +360,31 @@
     dot.className = 'step-dot ' + (state || '');
   }
 
+  function getApiKey() {
+    return localStorage.getItem('anthropic_api_key') || '';
+  }
+
+  function saveApiKey() {
+    const key = document.getElementById('apiKeyInput').value.trim();
+    if (!key) return;
+    localStorage.setItem('anthropic_api_key', key);
+    document.getElementById('apiKeySection').style.display = 'none';
+    document.getElementById('apiKeySaved').style.display = 'block';
+  }
+
+  function checkApiKey() {
+    const key = getApiKey();
+    if (key) {
+      document.getElementById('apiKeySection').style.display = 'none';
+      document.getElementById('apiKeySaved').style.display = 'block';
+    }
+  }
+
   async function startScan() {
+    if (!getApiKey()) {
+      alert('Indtast din Anthropic API-nøgle først.');
+      return;
+    }
     if (!imageBase64) return;
 
     scanBtn.disabled = true;
@@ -395,7 +433,7 @@
   async function recognizeCard() {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': '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', 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': getApiKey(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
@@ -509,6 +547,8 @@
     rc.style.display = 'block';
     rc.innerHTML = '<span class="badge badge-err">Fejl</span><p style="font-size:14px;color:var(--danger);margin-top:8px;">' + esc(msg) + '</p>';
   }
+
+  checkApiKey();
 
   function esc(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
