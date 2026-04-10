@@ -395,7 +395,7 @@
   async function recognizeCard() {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': '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', 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
